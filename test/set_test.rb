@@ -3,11 +3,11 @@ require 'test_helper'
 class IntegerSet::SetTest < Minitest::Test
   def setup
     @set = IntegerSet::Set.new(10)
-    @size = 10
+    @max_size = 10
   end
 
-  def test_size
-    assert_equal 10, @set.size
+  def test_max_size
+    assert_equal @max_size, @set.max_size
   end
 
   def test_cannot_insert_non_numbers
@@ -17,7 +17,7 @@ class IntegerSet::SetTest < Minitest::Test
   end
 
   def test_initializes_empty
-    refute((0..@size).any?(&@set.method(:include?)))
+    refute((0..@max_size).any?(&@set.method(:include?)))
   end
 
   def test_insert_and_test_for_existence

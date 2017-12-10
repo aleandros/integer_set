@@ -16,10 +16,10 @@ static char integer_set_test_membership(BitVector bitvector, unsigned int candid
   return bitvector[candidate >> SHIFT] & 1 << (candidate & MASK);
 }
 
-VALUE integer_set_initialize(VALUE self, VALUE size) {
+VALUE integer_set_initialize(VALUE self, VALUE max_size) {
   BitVector bitvector = NULL;
   BitVector ptr_check = NULL;
-  unsigned int c_size = NUM2UINT(size);
+  unsigned int c_size = NUM2UINT(max_size);
   size_t slots = c_size / (sizeof(unsigned int) * 8) + 1;
 
   Data_Get_Struct(self, unsigned int, bitvector);
@@ -27,13 +27,13 @@ VALUE integer_set_initialize(VALUE self, VALUE size) {
   ptr_check = (BitVector) realloc(bitvector, sizeof(unsigned int) * slots);
 
   if (ptr_check == NULL) {
-    rb_raise(rb_eNoMemError, "No memory left for set of size %u", c_size);
+    rb_raise(rb_eNoMemError, "No memory left for set of max_size %u", c_size);
   }
 
   for (size_t i = 0; i < slots; i++) {
     bitvector[i] = 0;
   }
-  rb_iv_set(self, "@size", size);
+  rb_iv_set(self, "@max_size", max_size);
   return self;
 }
 
@@ -62,11 +62,11 @@ VALUE integer_set_include(VALUE self, VALUE member) {
 
 VALUE integer_set_each(VALUE self) {
   BitVector bitvector;
-  unsigned int size = NUM2UINT(rb_iv_get(self, "@size"));
+  unsigned int max_size = NUM2UINT(rb_iv_get(self, "@max_size"));
 
   Data_Get_Struct(self, unsigned int, bitvector);
 
-  for (unsigned int i = 0; i < size; i++) {
+  for (unsigned int i = 0; i < max_size; i++) {
     if (integer_set_test_membership(bitvector, i)) {
       rb_yield(UINT2NUM(i));
     }
@@ -79,7 +79,7 @@ void Init_integer_set(void) {
   rb_IntegerSet = rb_define_module("IntegerSet");
   rb_IntegerSet_Set = rb_define_class_under(rb_IntegerSet, "Set", rb_cObject);
   rb_define_alloc_func(rb_IntegerSet_Set, allocate);
-  rb_define_attr(rb_IntegerSet_Set, "size", 1, 0);
+  rb_define_attr(rb_IntegerSet_Set, "max_size", 1, 0);
   rb_define_method(rb_IntegerSet_Set, "initialize", integer_set_initialize, 1);
   rb_define_method(rb_IntegerSet_Set, "insert", integer_set_insert, 1);
   rb_define_method(rb_IntegerSet_Set, "include?", integer_set_include, 1);
