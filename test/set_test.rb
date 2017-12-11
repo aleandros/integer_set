@@ -10,31 +10,40 @@ class IntegerSet::SetTest < Minitest::Test
     assert_equal @max_size, @set.max_size
   end
 
-  def test_cannot_insert_non_numbers
-    assert_raises(TypeError) { @set.insert('hi') }
-    assert_raises(TypeError) { @set.insert(nil) }
-    assert_raises(TypeError) { @set.insert(Object.new) }
+  def test_cannot_add_non_numbers
+    assert_raises(TypeError) { @set.add('hi') }
+    assert_raises(TypeError) { @set.add(nil) }
+    assert_raises(TypeError) { @set.add(Object.new) }
   end
 
   def test_initializes_empty
     refute((0..@max_size).any?(&@set.method(:include?)))
   end
 
-  def test_insert_and_test_for_existence
-    @set.insert(0)
-    @set.insert(4)
-    @set.insert(7)
+  def test_add_and_test_for_existence
+    @set.add(0)
+    @set.add(4)
+    @set.add(7)
     assert @set.include?(0)
     assert @set.include?(4)
     assert @set.include?(7)
     refute [1, 2, 3, 5, 6, 8, 9].any?(&@set.method(:include?))
   end
 
+  def test_add_and_include_aliases
+    @set << 0
+    @set << 4
+    @set << 7
+    assert @set.member?(0)
+    assert @set.member?(4)
+    assert @set.member?(7)
+  end
+
   def test_each
     @set = IntegerSet::Set.new(10)
-    @set.insert(0)
-    @set.insert(4)
-    @set.insert(7)
+    @set.add(0)
+    @set.add(4)
+    @set.add(7)
     results = []
     @set.each do |n|
       results << n
@@ -43,9 +52,9 @@ class IntegerSet::SetTest < Minitest::Test
   end
 
   def test_implements_enumerable
-    @set.insert(0)
-    @set.insert(4)
-    @set.insert(7)
+    @set.add(0)
+    @set.add(4)
+    @set.add(7)
     assert_equal([1, 5, 8], @set.map { |x| x + 1 })
   end
 end
