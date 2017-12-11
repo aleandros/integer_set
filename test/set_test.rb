@@ -63,6 +63,16 @@ class IntegerSet::SetTest < Minitest::Test
     assert @set.member?(7)
   end
 
+  def test_delete
+    @set.add(0)
+    @set.add(3)
+    @set.delete(0)
+    @set.delete(3)
+    refute @set.include?(0)
+    refute @set.include?(3)
+    assert @set.empty?
+  end
+
   def test_each
     @set = IntegerSet::Set.new(10)
     @set.add(0)

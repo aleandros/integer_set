@@ -92,6 +92,22 @@ VALUE integer_set_empty(VALUE self) {
   }
 }
 
+VALUE integer_set_delete(VALUE self, VALUE member) {
+  SetElement c_member = NUM2UINT(member);
+  BitVector bitvector;
+  SetElement size = NUM2UINT(rb_iv_get(self, "@size"));
+  size_t index = c_member >> SHIFT;
+  SetElement mask = 1 << (c_member & MASK);
+  Data_Get_Struct(self, BitVectorSlice, bitvector);
+
+  if (bitvector[index] & mask) {
+    rb_iv_set(self, "@size", UINT2NUM(size - 1));
+  }
+
+  bitvector[index] &= ~mask;
+  return self;
+}
+
 void Init_integer_set(void) {
   rb_IntegerSet = rb_define_module("IntegerSet");
   rb_IntegerSet_Set = rb_define_class_under(rb_IntegerSet, "Set", rb_cObject);
@@ -100,6 +116,7 @@ void Init_integer_set(void) {
   rb_define_attr(rb_IntegerSet_Set, "size", 1, 0);
   rb_define_method(rb_IntegerSet_Set, "initialize", integer_set_initialize, 1);
   rb_define_method(rb_IntegerSet_Set, "add", integer_set_add, 1);
+  rb_define_method(rb_IntegerSet_Set, "delete", integer_set_delete, 1);
   rb_define_method(rb_IntegerSet_Set, "include?", integer_set_include, 1);
   rb_define_method(rb_IntegerSet_Set, "empty?", integer_set_empty, 0);
 
