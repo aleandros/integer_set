@@ -36,15 +36,23 @@ VALUE integer_set_initialize(VALUE self, VALUE max_size) {
     bitvector[i] = 0;
   }
   rb_iv_set(self, "@max_size", max_size);
+  rb_iv_set(self, "@size", UINT2NUM(0));
   return self;
 }
 
 VALUE integer_set_add(VALUE self, VALUE member) {
   SetElement c_member = NUM2UINT(member);
   BitVector bitvector;
+  SetElement size = NUM2UINT(rb_iv_get(self, "@size"));
+  size_t index = c_member >> SHIFT;
+  SetElement mask = 1 << (c_member & MASK);
   Data_Get_Struct(self, BitVectorSlice, bitvector);
 
-  bitvector[c_member >> SHIFT] |= 1 << (c_member & MASK);
+  if ((bitvector[index] & mask) == 0) {
+    rb_iv_set(self, "@size", UINT2NUM(size + 1));
+  }
+
+  bitvector[index] |= mask;
   return self;
 }
 
@@ -74,14 +82,26 @@ VALUE integer_set_each(VALUE self) {
   return self;
 }
 
+VALUE integer_set_empty(VALUE self) {
+  SetElement size = NUM2UINT(rb_iv_get(self, "@size"));
+
+  if (size == 0) {
+    return Qtrue;
+  } else {
+    return Qfalse;
+  }
+}
+
 void Init_integer_set(void) {
   rb_IntegerSet = rb_define_module("IntegerSet");
   rb_IntegerSet_Set = rb_define_class_under(rb_IntegerSet, "Set", rb_cObject);
   rb_define_alloc_func(rb_IntegerSet_Set, allocate);
   rb_define_attr(rb_IntegerSet_Set, "max_size", 1, 0);
+  rb_define_attr(rb_IntegerSet_Set, "size", 1, 0);
   rb_define_method(rb_IntegerSet_Set, "initialize", integer_set_initialize, 1);
   rb_define_method(rb_IntegerSet_Set, "add", integer_set_add, 1);
   rb_define_method(rb_IntegerSet_Set, "include?", integer_set_include, 1);
+  rb_define_method(rb_IntegerSet_Set, "empty?", integer_set_empty, 0);
 
   /* Implement enumerable interface */
   rb_define_method(rb_IntegerSet_Set, "each", integer_set_each, 0);
@@ -90,5 +110,6 @@ void Init_integer_set(void) {
   /* Alias methods */
   rb_define_alias(rb_IntegerSet_Set, "member?", "include?");
   rb_define_alias(rb_IntegerSet_Set, "<<", "add");
+  rb_define_alias(rb_IntegerSet_Set, "length", "size");
 }
 

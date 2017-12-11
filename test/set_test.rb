@@ -20,6 +20,26 @@ class IntegerSet::SetTest < Minitest::Test
     refute((0..@max_size).any?(&@set.method(:include?)))
   end
 
+  def test_size_and_length
+    assert @set.size.zero?
+    assert @set.length.zero?
+
+    @set.add(1)
+    assert_equal 1, @set.size
+
+    @set.add(1)
+    @set.add(2)
+    @set.add(6)
+    assert_equal 3, @set.size
+    assert_equal @set.size, @set.length
+  end
+
+  def test_empty
+    assert @set.empty?
+    @set.add(1)
+    refute @set.empty?
+  end
+
   def test_add_and_test_for_existence
     @set.add(0)
     @set.add(4)
@@ -28,6 +48,10 @@ class IntegerSet::SetTest < Minitest::Test
     assert @set.include?(4)
     assert @set.include?(7)
     refute [1, 2, 3, 5, 6, 8, 9].any?(&@set.method(:include?))
+  end
+
+  def test_add_returns_self
+    assert_equal @set, @set.add(0)
   end
 
   def test_add_and_include_aliases
