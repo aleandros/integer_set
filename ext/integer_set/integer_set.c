@@ -5,12 +5,18 @@
 typedef unsigned int* BitVector;
 typedef unsigned int BitVectorSlice;
 typedef unsigned int SetElement;
+typedef struct SizedBitVector {
+  BitVector vector;
+  SetElement max_size;
+  size_t size;
+} SizedBitVector;
 
 VALUE rb_IntegerSet;
 VALUE rb_IntegerSet_Set;
 
 static VALUE allocate(VALUE klass) {
-  BitVector bitvector = malloc(sizeof(BitVectorSlice));
+  struct SizedBitVector* bitvector = malloc(sizeof(SizedBitVector));
+  bitvector->vector = malloc(sizeof(BitVectorSlice));
   return Data_Wrap_Struct(klass, NULL, RUBY_DEFAULT_FREE, bitvector);
 }
 
@@ -19,62 +25,60 @@ static BitVectorSlice integer_set_test_membership(BitVector bitvector, SetElemen
 }
 
 VALUE integer_set_initialize(VALUE self, VALUE max_size) {
-  BitVector bitvector = NULL;
+  SizedBitVector* bitvector = NULL;
   BitVector ptr_check = NULL;
   SetElement c_size = NUM2UINT(max_size);
   size_t slots = c_size / (sizeof(BitVectorSlice) * 8) + 1;
 
-  Data_Get_Struct(self, BitVectorSlice, bitvector);
+  Data_Get_Struct(self, SizedBitVector, bitvector);
 
-  ptr_check = (BitVector) realloc(bitvector, sizeof(BitVectorSlice) * slots);
+  ptr_check = (BitVector) realloc(bitvector->vector, sizeof(BitVectorSlice) * slots);
 
   if (ptr_check == NULL) {
     rb_raise(rb_eNoMemError, "No memory left for set of max_size %u", c_size);
   }
 
   for (size_t i = 0; i < slots; i++) {
-    bitvector[i] = 0;
+    bitvector->vector[i] = 0;
   }
-  rb_iv_set(self, "@max_size", max_size);
-  rb_iv_set(self, "@size", UINT2NUM(0));
+  bitvector->max_size = NUM2UINT(max_size);
+  bitvector->size = 0;
   return self;
 }
 
 VALUE integer_set_add(VALUE self, VALUE member) {
   SetElement c_member = NUM2UINT(member);
-  BitVector bitvector;
-  SetElement size = NUM2UINT(rb_iv_get(self, "@size"));
+  SizedBitVector* bitvector;
   size_t index = c_member >> SHIFT;
   SetElement mask = 1 << (c_member & MASK);
-  Data_Get_Struct(self, BitVectorSlice, bitvector);
+  Data_Get_Struct(self, SizedBitVector, bitvector);
 
-  if ((bitvector[index] & mask) == 0) {
-    rb_iv_set(self, "@size", UINT2NUM(size + 1));
+  if ((bitvector->vector[index] & mask) == 0) {
+    bitvector->size++;
   }
 
-  bitvector[index] |= mask;
+  bitvector->vector[index] |= mask;
   return self;
 }
 
 VALUE integer_set_include(VALUE self, VALUE member) {
   SetElement c_member = NUM2UINT(member);
-  BitVector bitvector;
-  Data_Get_Struct(self, BitVectorSlice, bitvector);
-
-  if (integer_set_test_membership(bitvector, c_member)) {
-    return Qtrue;
-  } else {
-    return Qfalse;
-  }
+  SizedBitVector* bitvector;
+  Data_Get_Struct(self, SizedBitVector, bitvector);
+  return integer_set_test_membership(bitvector->vector, c_member);
+  /* if () { */
+  /*   return Qtrue; */
+  /* } else { */
+  /*   return Qfalse; */
+  /* } */
 }
 
 VALUE integer_set_each(VALUE self) {
-  SetElement max_size = NUM2UINT(rb_iv_get(self, "@max_size"));
-  BitVector bitvector;
-  Data_Get_Struct(self, BitVectorSlice, bitvector);
+  SizedBitVector* bitvector;
+  Data_Get_Struct(self, SizedBitVector, bitvector);
 
-  for (SetElement i = 0; i < max_size; i++) {
-    if (integer_set_test_membership(bitvector, i)) {
+  for (SetElement i = 0; i < bitvector->max_size; i++) {
+    if (integer_set_test_membership(bitvector->vector, i)) {
       rb_yield(UINT2NUM(i));
     }
   }
@@ -83,9 +87,10 @@ VALUE integer_set_each(VALUE self) {
 }
 
 VALUE integer_set_empty(VALUE self) {
-  SetElement size = NUM2UINT(rb_iv_get(self, "@size"));
+  SizedBitVector* bitvector;
+  Data_Get_Struct(self, SizedBitVector, bitvector);
 
-  if (size == 0) {
+  if (bitvector->size == 0) {
     return Qtrue;
   } else {
     return Qfalse;
@@ -94,26 +99,37 @@ VALUE integer_set_empty(VALUE self) {
 
 VALUE integer_set_delete(VALUE self, VALUE member) {
   SetElement c_member = NUM2UINT(member);
-  BitVector bitvector;
-  SetElement size = NUM2UINT(rb_iv_get(self, "@size"));
   size_t index = c_member >> SHIFT;
   SetElement mask = 1 << (c_member & MASK);
-  Data_Get_Struct(self, BitVectorSlice, bitvector);
+  SizedBitVector* bitvector;
+  Data_Get_Struct(self, SizedBitVector, bitvector);
 
-  if (bitvector[index] & mask) {
-    rb_iv_set(self, "@size", UINT2NUM(size - 1));
+  if (bitvector->vector[index] & mask) {
+    bitvector->size--;
   }
 
-  bitvector[index] &= ~mask;
+  bitvector->vector[index] &= ~mask;
   return self;
+}
+
+VALUE integer_set_max_size(VALUE self) {
+  SizedBitVector* bitvector;
+  Data_Get_Struct(self, SizedBitVector, bitvector);
+  return UINT2NUM(bitvector->max_size);
+}
+
+VALUE integer_set_size(VALUE self) {
+  SizedBitVector* bitvector;
+  Data_Get_Struct(self, SizedBitVector, bitvector);
+  return UINT2NUM(bitvector->size);
 }
 
 void Init_integer_set(void) {
   rb_IntegerSet = rb_define_module("IntegerSet");
   rb_IntegerSet_Set = rb_define_class_under(rb_IntegerSet, "Set", rb_cObject);
   rb_define_alloc_func(rb_IntegerSet_Set, allocate);
-  rb_define_attr(rb_IntegerSet_Set, "max_size", 1, 0);
-  rb_define_attr(rb_IntegerSet_Set, "size", 1, 0);
+  rb_define_method(rb_IntegerSet_Set, "max_size", integer_set_max_size, 0);
+  rb_define_method(rb_IntegerSet_Set, "size", integer_set_size, 0);
   rb_define_method(rb_IntegerSet_Set, "initialize", integer_set_initialize, 1);
   rb_define_method(rb_IntegerSet_Set, "add", integer_set_add, 1);
   rb_define_method(rb_IntegerSet_Set, "delete", integer_set_delete, 1);
