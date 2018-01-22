@@ -66,11 +66,6 @@ VALUE integer_set_include(VALUE self, VALUE member) {
   SizedBitVector* bitvector;
   Data_Get_Struct(self, SizedBitVector, bitvector);
   return integer_set_test_membership(bitvector->vector, c_member);
-  /* if () { */
-  /*   return Qtrue; */
-  /* } else { */
-  /*   return Qfalse; */
-  /* } */
 }
 
 VALUE integer_set_each(VALUE self) {
