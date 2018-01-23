@@ -14,10 +14,15 @@ typedef struct SizedBitVector {
 VALUE rb_IntegerSet;
 VALUE rb_IntegerSet_Set;
 
+static void free_sized_bit_vector(SizedBitVector * bitvector) {
+  free(bitvector->vector);
+  free(bitvector);
+}
+
 static VALUE allocate(VALUE klass) {
   struct SizedBitVector* bitvector = malloc(sizeof(SizedBitVector));
   bitvector->vector = malloc(sizeof(BitVectorSlice));
-  return Data_Wrap_Struct(klass, NULL, RUBY_DEFAULT_FREE, bitvector);
+  return Data_Wrap_Struct(klass, NULL, free_sized_bit_vector, bitvector);
 }
 
 static BitVectorSlice integer_set_test_membership(BitVector bitvector, SetElement candidate) {
